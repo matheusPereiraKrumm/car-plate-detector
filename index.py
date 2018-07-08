@@ -1,8 +1,7 @@
-import cv2 as cv
-import numpy as np
+from copy import deepcopy
 from os import walk
-from os import sys
-from copy import copy, deepcopy
+
+import cv2 as cv
 
 
 class Line:
@@ -28,10 +27,6 @@ def treeequals(line_act):
                 count_intercection = count_intercection + 1
                 cont_equals = 0
     return count_intercection >= 8
-
-
-kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
-directory = 'amostra'
 
 
 def diff_lower(line1, line2):
@@ -81,7 +76,7 @@ def obtain_obj_line_final(imgParam):
                 obj.set_fim(i)
                 obj = None
     if obj is not None:
-        obj.set_fim(height-1)
+        obj.set_fim(height - 1)
     list.sort(key=lambda l: l.tamanho, reverse=True)
     obj_final = None
     i = 0
@@ -133,7 +128,7 @@ def procuraContornosParecidos(contours, quantidadeContornosParecidos):
         pivo = contours[i]
         larguraPivo, auturaPivo = getDimensions(pivo)
         listaContornosParecidos.append(pivo)
-        for j in range(i+1, len(contours)):
+        for j in range(i + 1, len(contours)):
             contorno = contours[j]
             larguraContorno, auturaContorno = getDimensions(contorno)
             if dimensoesParecidas(larguraPivo, larguraContorno, auturaPivo, auturaContorno):
@@ -156,7 +151,7 @@ def removeInnersContorns(contornosParecidos):
             contorno = result[j]
             maxXContorno = sorted(contorno, key=lambda x: x[0][0], reverse=True)[0][0][0]
             minXContorno = sorted(contorno, key=lambda x: x[0][0], reverse=False)[0][0][0]
-            if (maxXContorno >= maxXPivo and minXContorno <= minXPivo)\
+            if (maxXContorno >= maxXPivo and minXContorno <= minXPivo) \
                     or (maxXContorno <= maxXPivo and minXContorno >= minXPivo):
                 temIgual = True
         if not temIgual:
@@ -219,15 +214,13 @@ def segment_caracter(imgParam):
             newImage = deepcopy(imgcrop)
             cv.imshow("Contorno " + str(i), newImage)
 
-
-
         key = cv.waitKey(0)
         if key == 83:
             paramThesh = paramThesh + 10
         if key == 81:
             paramThesh = paramThesh - 10
-        print key
-        print paramThesh
+        print(key)
+        print(paramThesh)
         cv.destroyAllWindows()
     #
     # open = cv.morphologyEx(fim, cv.MORPH_OPEN, element2)
@@ -249,31 +242,33 @@ def segment_caracter(imgParam):
     # cv.destroyAllWindows()
 
 
-for (a, b, files) in walk(directory):
-    for filename in files:
-        img = cv.imread((directory + '/' + filename), 0)
-        imgOri = cv.imread((directory + '/' + filename), 0)
+if __name__ == '__main__':
+    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
+    directory = 'amostra'
 
-        objFinal = obtain_obj_line_final(img)
-        imgcrop = imgOri[objFinal.inicio - 10:objFinal.fim][0:]
+    for (a, b, files) in walk(directory):
+        for filename in files:
+            img = cv.imread((directory + '/' + filename), 0)
+            imgOri = cv.imread((directory + '/' + filename), 0)
 
-        newImage = deepcopy(imgcrop)
-        segment_caracter(newImage)
+            objFinal = obtain_obj_line_final(img)
+            imgcrop = imgOri[objFinal.inicio - 10:objFinal.fim][0:]
 
-        imgcrop = cv.medianBlur(imgcrop, 5)
+            newImage = deepcopy(imgcrop)
+            segment_caracter(newImage)
 
-        # cv.imshow("fewH", imgcrop)
-        # key = cv.waitKey(0)
-        # while key != 32:
-        #     if key == 107:
-        #         print filename
-        #     key = cv.waitKey(0)
-        # cv.destroyAllWindows()
+            imgcrop = cv.medianBlur(imgcrop, 5)
 
-        # noNoise = cv.morphologyEx(img, cv.MORPH_TOPHAT, kernel)
-        # img = img - noNoise
-        # img = cv.morphologyEx(img, cv.MORPH_OPEN, kernel)
-        # img = cv.morphologyEx(img, cv.MORPH_GRADIENT, kernel)
-        # cv.imshow(filename, img)
+            # cv.imshow("fewH", imgcrop)
+            # key = cv.waitKey(0)
+            # while key != 32:
+            #     if key == 107:
+            #         print filename
+            #     key = cv.waitKey(0)
+            # cv.destroyAllWindows()
 
-sys.exit()
+            # noNoise = cv.morphologyEx(img, cv.MORPH_TOPHAT, kernel)
+            # img = img - noNoise
+            # img = cv.morphologyEx(img, cv.MORPH_OPEN, kernel)
+            # img = cv.morphologyEx(img, cv.MORPH_GRADIENT, kernel)
+            # cv.imshow(filename, img)
