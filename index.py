@@ -5,51 +5,52 @@ import cv2 as cv
 
 
 class Line:
-    def __init__(self, inicio):
-        self.inicio = inicio
-        self.fim = 0
-        self.tamanho = 0
+    def __init__(self, begin):
+        self.begin = begin
+        self.end = 0
+        self.size = 0
 
-    def set_fim(self, value):
-        self.fim = value
-        self.tamanho = value - self.inicio
+    def set_end(self, value):
+        self.end = value
+        self.size = value - self.begin
 
 
-def treeequals(line_act):
+def tree_equals(line_act):
     last = line_act[0]
-    count_intercection = 0
+    count_intersection = 0
     cont_equals = 0
     for pixel in line_act:
         if pixel != last:
             cont_equals = cont_equals + 1
             if cont_equals >= 3:
                 last = pixel
-                count_intercection = count_intercection + 1
+                count_intersection = count_intersection + 1
                 cont_equals = 0
-    return count_intercection >= 8
+
+    return count_intersection >= 8
 
 
 def diff_lower(line1, line2):
-    if line1.inicio > line2.inicio:
-        return line1.inicio - line2.fim
+    if line1.begin > line2.begin:
+        return line1.begin - line2.end
     else:
-        return line2.inicio - line1.fim
+        return line2.begin - line1.end
 
 
 def join_lines(line1, line2):
-    if line1.inicio > line2.inicio:
-        result = Line(line2.inicio)
-        result.set_fim(line1.fim)
+    if line1.begin > line2.begin:
+        result = Line(line2.begin)
+        result.set_end(line1.end)
         return result
     else:
-        result = Line(line1.inicio)
-        result.set_fim(line2.fim)
+        result = Line(line1.begin)
+        result.set_end(line2.end)
         return result
 
 
-def obtain_obj_line_final(imgParam):
-    height = imgParam.shape[0]
-    width = imgParam.shape[1]
+def obtain_obj_line_final(img):
+    height = img.shape[0]
+    width = img.shape[1]
 
     if width > 450:
         element3 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (17, 17))
@@ -57,194 +58,167 @@ def obtain_obj_line_final(imgParam):
         element3 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
     else:
         element3 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3, 3))
-    topHat_a = cv.morphologyEx(imgParam, 5, element3)
-    result = imgParam - topHat_a
-    fim = imgParam
-    cv.threshold(result, 100, 255, cv.THRESH_BINARY, fim)
+
+    top_hat_a = cv.morphologyEx(img, 5, element3)
+    result = img - top_hat_a
+    end = img
+
+    cv.threshold(result, 100, 255, cv.THRESH_BINARY, end)
+
     i = 0
     list = []
     obj = None
     while i < height:
-        line = imgParam[i]
+        line = img[i]
         i = i + 1
-        if treeequals(line):
+        if tree_equals(line):
             if obj is None:
                 obj = Line(i)
                 list.append(obj)
         else:
             if obj is not None:
-                obj.set_fim(i)
+                obj.set_end(i)
                 obj = None
+
     if obj is not None:
-        obj.set_fim(height - 1)
-    list.sort(key=lambda l: l.tamanho, reverse=True)
-    obj_final = None
+        obj.set_end(height - 1)
+
+    list.sort(key=lambda l: l.size, reverse=True)
+
+    result = None
     i = 0
     while i < len(list):
         obj = list[i]
         i = i + 1
         if i > 1:
-            if diff_lower(obj_final, obj) < 10:
-                obj_final = join_lines(obj_final, obj)
+            if diff_lower(result, obj) < 10:
+                result = join_lines(result, obj)
             else:
                 i = len(list)
         else:
-            obj_final = Line(obj.inicio)
-            obj_final.set_fim(obj.fim)
-    return obj_final
+            result = Line(obj.begin)
+            result.set_end(obj.end)
 
-
-def getAreaBoundingBox(contorno):
-    largura, autura = getDimensions(contorno)
-    return largura * autura
-
-
-def getLargura(contorno):
-    maxX = sorted(contorno, key=lambda x: x[0][0], reverse=True)[0][0][0]
-    minX = sorted(contorno, key=lambda x: x[0][0], reverse=False)[0][0][0]
-    return maxX - minX
-
-
-def getAltura(contorno):
-    maxY = sorted(contorno, key=lambda x: x[0][1], reverse=True)[0][0][1]
-    minY = sorted(contorno, key=lambda x: x[0][1], reverse=False)[0][0][1]
-    return maxY - minY
-
-
-def getDimensions(contorno):
-    return getLargura(contorno), getAltura(contorno)
-
-
-def dimensoesParecidas(larguraPivo, larguraContorno, auturaPivo, auturaContorno):
-    larguraParecida = (larguraContorno - 5) <= larguraPivo <= (larguraContorno + 5)
-    auturaParecida = (auturaContorno - 5) <= auturaPivo <= (auturaContorno + 5)
-    return auturaParecida
-
-
-def procuraContornosParecidos(contours, quantidadeContornosParecidos):
-    listaContornosEnquadrados = []
-    for i in range(len(contours)):
-        listaContornosParecidos = []
-        pivo = contours[i]
-        larguraPivo, auturaPivo = getDimensions(pivo)
-        listaContornosParecidos.append(pivo)
-        for j in range(i + 1, len(contours)):
-            contorno = contours[j]
-            larguraContorno, auturaContorno = getDimensions(contorno)
-            if dimensoesParecidas(larguraPivo, larguraContorno, auturaPivo, auturaContorno):
-                listaContornosParecidos.append(contorno)
-        if len(listaContornosParecidos) > quantidadeContornosParecidos:
-            listaContornosEnquadrados.append(listaContornosParecidos)
-
-    ordenada = sorted(listaContornosEnquadrados, key=lambda c: getAltura(c[0]), reverse=True)
-    return ordenada[0]
-
-
-def removeInnersContorns(contornosParecidos):
-    result = []
-    for i in range(len(contornosParecidos)):
-        pivo = contornosParecidos[i]
-        maxXPivo = sorted(pivo, key=lambda x: x[0][0], reverse=True)[0][0][0]
-        minXPivo = sorted(pivo, key=lambda x: x[0][0], reverse=False)[0][0][0]
-        temIgual = False
-        for j in range(len(result)):
-            contorno = result[j]
-            maxXContorno = sorted(contorno, key=lambda x: x[0][0], reverse=True)[0][0][0]
-            minXContorno = sorted(contorno, key=lambda x: x[0][0], reverse=False)[0][0][0]
-            if (maxXContorno >= maxXPivo and minXContorno <= minXPivo) \
-                    or (maxXContorno <= maxXPivo and minXContorno >= minXPivo):
-                temIgual = True
-        if not temIgual:
-            result.append(pivo)
     return result
 
 
-def segment_caracter(imgParam):
-    height = imgParam.shape[0]
-    width = imgParam.shape[1]
-    # imgParam = cv.medianBlur(imgParam, 5)
+def bounding_box_area(contour):
+    width, height = dimensions(contour)
+    return width * height
 
-    if width > 280:
-        element2 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
-    else:
-        element2 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (1, 3))
-    element3 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (17, 17))
-    element4 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (15, 15))
 
-    # cv.imshow("ori", imgParam)
+def width(contour):
+    max_x = sorted(contour, key=lambda x: x[0][0], reverse=True)[0][0][0]
+    min_x = sorted(contour, key=lambda x: x[0][0], reverse=False)[0][0][0]
+    return max_x - min_x
 
-    # topHat_a = cv.morphologyEx(imgParam, 5, element3)
-    # cv.imshow("TH_ABERTA", topHat_a)
 
-    topHat_c = cv.morphologyEx(imgParam, 6, element4)
-    # cv.imshow("TH_FECHADO", topHat_c)
+def height(contour):
+    max_y = sorted(contour, key=lambda x: x[0][1], reverse=True)[0][0][1]
+    min_y = sorted(contour, key=lambda x: x[0][1], reverse=False)[0][0][1]
+    return max_y - min_y
 
+
+def dimensions(contour):
+    return width(contour), height(contour)
+
+
+def similar_dimensions(height_pivo, height_contour):
+    return (height_contour - 5) <= height_pivo <= (height_contour + 5)
+
+
+def similar_contours(contours, similar_contours_count):
+    framed_contours = []
+
+    for i in range(len(contours)):
+        similar_contours = []
+        pivo = contours[i]
+        width_pivo, height_pivo = dimensions(pivo)
+        similar_contours.append(pivo)
+
+        for j in range(i + 1, len(contours)):
+            contour = contours[j]
+            width_contour, height_contour = dimensions(contour)
+
+            if similar_dimensions(height_pivo, height_contour):
+                similar_contours.append(contour)
+
+        if len(similar_contours) > similar_contours_count:
+            framed_contours.append(similar_contours)
+
+    return sorted(framed_contours, key=lambda c: height(c[0]), reverse=True)[0]
+
+
+def remove_inners_contours(similar_contours):
+    result = []
+    for i in range(len(similar_contours)):
+        pivo = similar_contours[i]
+
+        max_x_pivo = sorted(pivo, key=lambda x: x[0][0], reverse=True)[0][0][0]
+        min_x_pivo = sorted(pivo, key=lambda x: x[0][0], reverse=False)[0][0][0]
+
+        has_equal = False
+        for j in range(len(result)):
+            contour = result[j]
+
+            max_x_contour = sorted(contour, key=lambda x: x[0][0], reverse=True)[0][0][0]
+            min_x_contour = sorted(contour, key=lambda x: x[0][0], reverse=False)[0][0][0]
+
+            if (max_x_contour >= max_x_pivo and min_x_contour <= min_x_pivo) \
+                    or (max_x_contour <= max_x_pivo and min_x_contour >= min_x_pivo):
+                has_equal = True
+
+        if not has_equal:
+            result.append(pivo)
+
+    return result
+
+
+def segment_character(img):
     key = 0
-    paramThesh = 60
+    param_thresh = 60
+
     while key != 32:
-        fim = imgParam.copy()
-        # cv.threshold(imgParam, paramThesh, 255, cv.THRESH_BINARY| cv.THRESH_OTSU, fim)
-        # cv.imshow("thres", fim)
+        end = img.copy()
 
-        # close = cv.morphologyEx(fim, cv.MORPH_GRADIENT, element2)
-        # cv.imshow("close", close)
-
-        gray = cv.bilateralFilter(fim, 11, 17, 17)
+        gray = cv.bilateralFilter(end, 11, 17, 17)
         edged = cv.Canny(gray, 30, 200)
-        cv.imshow("canny", edged)
-        # ret, thresh = cv.threshold(close, paramThesh, 255, 0)
-        # dilate = cv.GaussianBlur(thresh, (1, 10001), 0)
+        cv.imshow("Processed Image", edged)
+
         im2, contours, hierarchy = cv.findContours(edged, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
-        ordenado = sorted(contours, key=lambda x: getAreaBoundingBox(x), reverse=True)
+        contours_sorted = sorted(contours, key=lambda x: bounding_box_area(x), reverse=True)
 
-        contornosParecidos = procuraContornosParecidos(ordenado, 7)
-        contornosParecidos = removeInnersContorns(contornosParecidos)
-        contornosParecidos = sorted(contornosParecidos, key=lambda x: x[0][0][0])
+        similar_contours_found = similar_contours(contours_sorted, 7)
+        similar_contours_found = remove_inners_contours(similar_contours_found)
+        similar_contours_found = sorted(similar_contours_found, key=lambda x: x[0][0][0])
 
-        for i in range(len(contornosParecidos)):
-            contorno = contornosParecidos[i]
-            maxX = sorted(contorno, key=lambda x: x[0][0], reverse=True)[0][0][0]
-            minX = sorted(contorno, key=lambda x: x[0][0], reverse=False)[0][0][0]
-            maxY = sorted(contorno, key=lambda x: x[0][1], reverse=True)[0][0][1]
-            minY = sorted(contorno, key=lambda x: x[0][1], reverse=False)[0][0][1]
+        for i in range(len(similar_contours_found)):
+            contour = similar_contours_found[i]
+            max_x = sorted(contour, key=lambda x: x[0][0], reverse=True)[0][0][0]
+            min_x = sorted(contour, key=lambda x: x[0][0], reverse=False)[0][0][0]
+            max_y = sorted(contour, key=lambda x: x[0][1], reverse=True)[0][0][1]
+            min_y = sorted(contour, key=lambda x: x[0][1], reverse=False)[0][0][1]
 
-            imgcrop = fim[minY:maxY, minX:maxX]
-
-            newImage = deepcopy(imgcrop)
-            cv.imshow("Contorno " + str(i), newImage)
+            img_crop = end[min_y:max_y, min_x:max_x]
+            img_new = deepcopy(img_crop)
+            cv.imshow("Contour " + str(i), img_new)
 
         key = cv.waitKey(0)
         if key == 83:
-            paramThesh = paramThesh + 10
+            param_thresh = param_thresh + 10
         if key == 81:
-            paramThesh = paramThesh - 10
+            param_thresh = param_thresh - 10
+
         print(key)
-        print(paramThesh)
+        print(param_thresh)
+
         cv.destroyAllWindows()
-    #
-    # open = cv.morphologyEx(fim, cv.MORPH_OPEN, element2)
-    # cv.imshow("open", open)
-    #
-    # close = cv.morphologyEx(fim, cv.MORPH_CLOSE, element2)
-    # cv.imshow("close", close)
-
-    #
-    # result = ((imgParam + topHat_a) - topHat_c) - open
-    #
-    # cv.imshow("thre", result)
-
-    # cv.imshow("fewH", fim)
-    # key = cv.waitKey(0)
-    # while key != 32:
-    #     print key
-    #     key = cv.waitKey(0)
-    # cv.destroyAllWindows()
 
 
 if __name__ == '__main__':
     kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
-    directory = 'amostra'
+    directory = 'samples'
 
     for (a, b, files) in walk(directory):
         for filename in files:
@@ -252,23 +226,7 @@ if __name__ == '__main__':
             imgOri = cv.imread((directory + '/' + filename), 0)
 
             objFinal = obtain_obj_line_final(img)
-            imgcrop = imgOri[objFinal.inicio - 10:objFinal.fim][0:]
+            img_crop = imgOri[objFinal.begin - 10:objFinal.end][0:]
 
-            newImage = deepcopy(imgcrop)
-            segment_caracter(newImage)
-
-            imgcrop = cv.medianBlur(imgcrop, 5)
-
-            # cv.imshow("fewH", imgcrop)
-            # key = cv.waitKey(0)
-            # while key != 32:
-            #     if key == 107:
-            #         print filename
-            #     key = cv.waitKey(0)
-            # cv.destroyAllWindows()
-
-            # noNoise = cv.morphologyEx(img, cv.MORPH_TOPHAT, kernel)
-            # img = img - noNoise
-            # img = cv.morphologyEx(img, cv.MORPH_OPEN, kernel)
-            # img = cv.morphologyEx(img, cv.MORPH_GRADIENT, kernel)
-            # cv.imshow(filename, img)
+            img_new = deepcopy(img_crop)
+            segment_character(img_new)
