@@ -175,45 +175,36 @@ def remove_inners_contours(similar_contours):
 
 
 def segment_character(img):
-    key = 0
-    param_thresh = 60
+    end = img.copy()
 
+    gray = cv.bilateralFilter(end, 11, 17, 17)
+    edged = cv.Canny(gray, 30, 200)
+    cv.imshow("Processed Image", edged)
+
+    im2, contours, hierarchy = cv.findContours(edged, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+
+    contours_sorted = sorted(contours, key=lambda x: bounding_box_area(x), reverse=True)
+
+    similar_contours_found = similar_contours(contours_sorted, 7)
+    similar_contours_found = remove_inners_contours(similar_contours_found)
+    similar_contours_found = sorted(similar_contours_found, key=lambda x: x[0][0][0])
+
+    for i in range(len(similar_contours_found)):
+        contour = similar_contours_found[i]
+        max_x = sorted(contour, key=lambda x: x[0][0], reverse=True)[0][0][0]
+        min_x = sorted(contour, key=lambda x: x[0][0], reverse=False)[0][0][0]
+        max_y = sorted(contour, key=lambda x: x[0][1], reverse=True)[0][0][1]
+        min_y = sorted(contour, key=lambda x: x[0][1], reverse=False)[0][0][1]
+
+        img_crop = end[min_y:max_y, min_x:max_x]
+        img_new = deepcopy(img_crop)
+        cv.imshow("Contour " + str(i), img_new)
+
+    key = cv.waitKey(0)
     while key != 32:
-        end = img.copy()
-
-        gray = cv.bilateralFilter(end, 11, 17, 17)
-        edged = cv.Canny(gray, 30, 200)
-        cv.imshow("Processed Image", edged)
-
-        im2, contours, hierarchy = cv.findContours(edged, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-
-        contours_sorted = sorted(contours, key=lambda x: bounding_box_area(x), reverse=True)
-
-        similar_contours_found = similar_contours(contours_sorted, 7)
-        similar_contours_found = remove_inners_contours(similar_contours_found)
-        similar_contours_found = sorted(similar_contours_found, key=lambda x: x[0][0][0])
-
-        for i in range(len(similar_contours_found)):
-            contour = similar_contours_found[i]
-            max_x = sorted(contour, key=lambda x: x[0][0], reverse=True)[0][0][0]
-            min_x = sorted(contour, key=lambda x: x[0][0], reverse=False)[0][0][0]
-            max_y = sorted(contour, key=lambda x: x[0][1], reverse=True)[0][0][1]
-            min_y = sorted(contour, key=lambda x: x[0][1], reverse=False)[0][0][1]
-
-            img_crop = end[min_y:max_y, min_x:max_x]
-            img_new = deepcopy(img_crop)
-            cv.imshow("Contour " + str(i), img_new)
-
         key = cv.waitKey(0)
-        if key == 83:
-            param_thresh = param_thresh + 10
-        if key == 81:
-            param_thresh = param_thresh - 10
 
-        print(key)
-        print(param_thresh)
-
-        cv.destroyAllWindows()
+    cv.destroyAllWindows()
 
 
 if __name__ == '__main__':
@@ -224,7 +215,7 @@ if __name__ == '__main__':
         for filename in files:
             img = cv.imread((directory + '/' + filename), 0)
             imgOri = cv.imread((directory + '/' + filename), 0)
-
+            print(directory + '/' + filename)
             objFinal = obtain_obj_line_final(img)
             img_crop = imgOri[objFinal.begin - 10:objFinal.end][0:]
 
