@@ -16,6 +16,11 @@ class Line:
 
 
 def tree_equals(line_act):
+    """
+        Conta quantas intercecções há na linha de pixel, que após a intercecção tenham continuação de 3 pixels do novo valor
+    :param line_act:
+    :return: Verdadeiro caso encontre no minimo 8 intercecções
+    """
     last = line_act[0]
     count_intersection = 0
     cont_equals = 0
@@ -31,6 +36,11 @@ def tree_equals(line_act):
 
 
 def diff_lower(line1, line2):
+    """
+    :param line1:
+    :param line2:
+    :return: A quantidade de linhas entre os dois objetos de linha
+    """
     if line1.begin > line2.begin:
         return line1.begin - line2.end
     else:
@@ -38,6 +48,13 @@ def diff_lower(line1, line2):
 
 
 def join_lines(line1, line2):
+    """
+        Defini que o inicio do novo Objeto linha é o menor inicio e maior fim entre os objetos
+        linha passados como parametro
+    :param line1:
+    :param line2:
+    :return: Novo objeto linha juntanto os dois passados como parametro
+    """
     if line1.begin > line2.begin:
         result = Line(line2.begin)
         result.set_end(line1.end)
@@ -49,6 +66,14 @@ def join_lines(line1, line2):
 
 
 def obtain_obj_line_final(img):
+    """
+        Aplica-se um Top Hat de Abertura e subtrai da imagem original
+        Binariza-se a imagem
+        Procura por possiveis linha que podem ser a placa
+        Encontra a maior sequencia de possiveis linha para ser a placa
+    :param img:
+    :return: Valor encontrado de maior sequencia do conjunto de possiveis placas
+    """
     height = img.shape[0]
     width = img.shape[1]
 
@@ -59,7 +84,7 @@ def obtain_obj_line_final(img):
     else:
         element3 = cv.getStructuringElement(cv.MORPH_ELLIPSE, (3, 3))
 
-    top_hat_a = cv.morphologyEx(img, 5, element3)
+    top_hat_a = cv.morphologyEx(img, cv.MORPH_TOPHAT, element3)
     result = img - top_hat_a
     end = img
 
@@ -103,31 +128,59 @@ def obtain_obj_line_final(img):
 
 
 def bounding_box_area(contour):
+    """
+        Busca as dimensões do contorno
+    :param contour:
+    :return: Area multiplicado pela altura do contorno
+    """
     width, height = dimensions(contour)
     return width * height
 
 
 def width(contour):
+    """
+    :param contour:
+    :return: A diferença entre o maior e menor valor no eixo X do contorno
+    """
     max_x = sorted(contour, key=lambda x: x[0][0], reverse=True)[0][0][0]
     min_x = sorted(contour, key=lambda x: x[0][0], reverse=False)[0][0][0]
     return max_x - min_x
 
 
 def height(contour):
+    """
+    :param contour:
+    :return: A diferença entre o maior e menor valor no eixo Y do contorno
+    """
     max_y = sorted(contour, key=lambda x: x[0][1], reverse=True)[0][0][1]
     min_y = sorted(contour, key=lambda x: x[0][1], reverse=False)[0][0][1]
     return max_y - min_y
 
 
 def dimensions(contour):
+    """
+    :param contour:
+    :return: Largura e Altura do contorno
+    """
     return width(contour), height(contour)
 
 
 def similar_dimensions(height_pivo, height_contour):
+    """
+    :param height_pivo:
+    :param height_contour:
+    :return: Verdadeiro caso a primeira altura seja igual a segunda podendo variar em 5 pixels para cima ou para baixo
+    """
     return (height_contour - 5) <= height_pivo <= (height_contour + 5)
 
 
 def similar_contours(contours, similar_contours_count):
+    """
+        Procura entre os contornos e agrupa por altura parecidas
+    :param contours:
+    :param similar_contours_count:
+    :return: O Conjunto de contornos com maior altura
+    """
     framed_contours = []
 
     for i in range(len(contours)):
@@ -150,6 +203,11 @@ def similar_contours(contours, similar_contours_count):
 
 
 def remove_inners_contours(similar_contours):
+    """
+        Remove contornos que possam estar dentro de outro contorno do conjunto.
+    :param similar_contours:
+    :return: O novo conjunto sem contorno dentro dos contornos do mesmo cnjunto.
+    """
     result = []
     for i in range(len(similar_contours)):
         pivo = similar_contours[i]
@@ -175,6 +233,16 @@ def remove_inners_contours(similar_contours):
 
 
 def segment_character(img):
+    """
+        Aplica-se o algoritmo Canny na imagem
+        Imprime a imagem refencia para a segmentação
+        Encontra os contornos da imagem
+        Busca o conjunto de contornos com maior altura por similaridade na altura da dimensão do contorno
+        Remove os contornos que possam estar dentro de outros contornos do conjunto
+        Ordena os contornos do conjunto da esquerda para a direita
+        Imprime os caracteres encontrados na ordem que deveriam estar na placa
+    :param img:
+    """
     end = img.copy()
 
     gray = cv.bilateralFilter(end, 11, 17, 17)
@@ -208,6 +276,9 @@ def segment_character(img):
 
 
 if __name__ == '__main__':
+    """ 
+        Encontra a posição de linhas da imgem que contem a placa e tenta segmentar os caracteres
+    """
     kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
     directory = 'samples'
 
